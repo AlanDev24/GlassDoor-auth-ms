@@ -1,20 +1,8 @@
-import { IsEmail, IsPhoneNumber, IsString, IsStrongPassword, MinLength } from 'class-validator';
+import { IsEmail, IsStrongPassword } from 'class-validator';
 
-export class RegisterUserDto {
-  @IsString()
-  name: string;
-
+export class LoginUserDto {
   @IsEmail()
   email: string;
-
-  @IsPhoneNumber('MX',
-    {
-      message:
-        'Insert a valid phone number.',
-    },
-  )
-  @MinLength(10)
-  phoneNumber: string
 
   @IsStrongPassword(
     {

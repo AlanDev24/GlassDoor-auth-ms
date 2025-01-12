@@ -1,7 +1,8 @@
-import { Controller } from '@nestjs/common';
+import { Body, Controller } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { MessagePattern, Payload } from '@nestjs/microservices';
-import { RegisterUserDto } from './dto';
+import { LoginUserDto, RegisterUserDto } from './dto';
+import { JwtPaylaod } from './interfaces';
 
 @Controller()
 export class AuthController {
@@ -13,7 +14,12 @@ export class AuthController {
   }
 
   @MessagePattern({ cmd: 'login_user' })
-  async loginUser() {
-    return this.authService.loginUser();
+  async loginUser(@Body() loginUserDto: LoginUserDto) {
+    return this.authService.loginUser(loginUserDto);
+  }
+
+  @MessagePattern({ cmd: 'edit_user' })
+  async editUser(@Payload() user: JwtPaylaod) {
+    return user
   }
 }
