@@ -1,29 +1,33 @@
-import { HttpStatus, Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import {
+  HttpStatus,
+  Inject,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { LoginUserDto, RegisterUserDto } from './dto';
-import { RpcException } from '@nestjs/microservices';
+import { ClientProxy, RpcException } from '@nestjs/microservices';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
-import { PrismaService } from 'src/prisma';
 import { JwtPaylaod } from './interfaces';
+import { firstValueFrom } from 'rxjs';
+import { CLIENTS_SERVICE_AUTH } from 'src/config';
 
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger('User-service');
   constructor(
     private readonly jwtService: JwtService,
-    private readonly prismaService: PrismaService,
+    @Inject(CLIENTS_SERVICE_AUTH) private readonly client: ClientProxy,
   ) {
     this.logger.log('User service working');
   }
 
   async registerUser(registerUserDto: RegisterUserDto) {
-    const { name, email, phoneNumber, password } = registerUserDto;
-
-    const userExist = await this.prismaService.user.findFirst({
-      where: {
-        email,
-      },
-    });
+    const { name, email, phoneNumber, password, roles } = registerUserDto;
+    const userExist = await firstValueFrom(
+      this.client.send({ cmd: 'find_by_email' }, { email }),
+    );
 
     if (userExist) {
       throw new RpcException({
@@ -35,21 +39,28 @@ export class AuthService {
     const salt = bcrypt.genSaltSync(10);
     const hashPassword = bcrypt.hashSync(password, salt);
 
-    const newUser = await this.prismaService.user.create({
-      data: {
-        name,
-        email,
-        phoneNumber,
-        password: hashPassword,
-      },
+    const newUser = await firstValueFrom(
+      this.client.send(
+        { cmd: 'create_user' },
+        {
+          name,
+          email,
+          phoneNumber,
+          password: hashPassword,
+          roles,
+        },
+      ),
+    );
+
+    const { isActive } = newUser;
+    const token = await this.signToken({
+      email,
+      isActive,
+      roles: newUser.roles,
     });
 
-    const { isActive, roles } = newUser;
-
-    const token = await this.signToken({ email, isActive, roles });
-
     return {
-      user: newUser.name,
+      user: newUser,
       token: token,
     };
   }
@@ -57,19 +68,26 @@ export class AuthService {
   async loginUser(loginUserDto: LoginUserDto) {
     const { email, password } = loginUserDto;
 
-    const existUser = await this.prismaService.user.findUnique({
-      where: {
-        email,
-      },
-    });
-    if (!existUser) {
+    //* La respuesta al llamado del MS será un Observable de tipo any
+    const userExist = await firstValueFrom(
+      this.client.send({ cmd: 'find_by_email' }, { email }),
+    );
+
+    if (!userExist) {
       throw new RpcException({
         status: HttpStatus.NOT_FOUND,
         message: 'User not found.',
       });
     }
 
-    const { password: userPassword, isActive, roles, ...rest } = existUser;
+    const { password: userPassword, isActive, roles, ...rest } = userExist;
+
+    if (!isActive) {
+      throw new RpcException({
+        status: HttpStatus.UNAUTHORIZED,
+        message: 'This user is inactive',
+      });
+    }
 
     const correctPassword = bcrypt.compareSync(password, userPassword);
 

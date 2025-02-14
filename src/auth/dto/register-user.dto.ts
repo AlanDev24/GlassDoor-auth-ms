@@ -1,4 +1,7 @@
-import { IsEmail, IsPhoneNumber, IsString, IsStrongPassword, MinLength } from 'class-validator';
+
+import { ArrayNotEmpty, IsArray, IsEmail, IsEnum, IsOptional, IsPhoneNumber, IsString, IsStrongPassword, MinLength } from 'class-validator';
+import { ValidRoles } from '../interfaces';
+
 
 export class RegisterUserDto {
   @IsString()
@@ -30,4 +33,10 @@ export class RegisterUserDto {
     },
   )
   password: string;
+
+  @IsArray()
+  @IsOptional()
+  @ArrayNotEmpty()
+  @IsEnum(ValidRoles, { each: true })
+  roles?: ValidRoles[];
 }
