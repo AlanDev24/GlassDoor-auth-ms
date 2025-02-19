@@ -9,9 +9,9 @@ import { LoginUserDto, RegisterUserDto } from './dto';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
-import { JwtPaylaod } from './interfaces';
+import { JwtPayload } from './interfaces';
 import { firstValueFrom } from 'rxjs';
-import { CLIENTS_SERVICE_AUTH } from 'src/config';
+import { CLIENTS_SERVICE_AUTH, envs } from 'src/config';
 
 @Injectable()
 export class AuthService {
@@ -107,7 +107,7 @@ export class AuthService {
     };
   }
 
-  async signToken(payload: JwtPaylaod) {
+  async signToken(payload: JwtPayload) {
     const token = await this.jwtService.signAsync(payload);
     return token;
   }

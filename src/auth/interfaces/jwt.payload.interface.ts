@@ -1,6 +1,6 @@
 import { ValidRoles } from './valid-roles';
 
-export interface JwtPaylaod {
+export interface JwtPayload {
   email: string;
   isActive: boolean;
   roles: ValidRoles[];
